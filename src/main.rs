@@ -1,21 +1,40 @@
+// use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::io::Read;
 
 fn main() {
-    let args: Vec<String> = std::env::args().collect();
+    let ast = Expr::Binary(
+        Box::new(Expr::Unary(
+            Token::new(TokenType::Minus, "-".to_string(), None, 1),
+            Box::new(Expr::Literal(TokenValue::Double(123.0))),
+        )),
+        Token::new(TokenType::Star, "*".to_string(), None, 1),
+        Box::new(Expr::Grouping(Box::new(Expr::Literal(TokenValue::Double(
+            45.67,
+        ))))),
+    );
 
-    if args.len() > 2 {
-        println!("Usage: rox [script]");
-        std::process::exit(64);
-    } else if args.len() == 2 {
-        print!("{:?}", args);
-        run_file(&args[1]);
-    } else {
-        run_prompt();
+    println!("{}", ast.to_string())
+    /*
+    let args: Vec<String> = std::env::args().collect();
+    let count = args.len();
+    match count.cmp(&2) {
+        Ordering::Greater => {
+            println!("Usage: rox [script]");
+            std::process::exit(64);
+        }
+        Ordering::Equal => {
+            print!("{:?}", args);
+            run_file(&args[1]);
+        }
+        Ordering::Less => {
+            run_prompt();
+        }
     }
+    */
 }
 
-fn run_file(file: &String) {
+fn run_file(file: &str) {
     let mut file = std::fs::File::open(file).unwrap();
     let mut contents = String::new();
     file.read_to_string(&mut contents).unwrap();
@@ -56,6 +75,8 @@ fn report(line: usize, where_: String, message: String) {
 
     // hadError = true;
 }
+
+// Scanner
 
 struct Scanner {
     source: String,
@@ -192,7 +213,7 @@ impl Scanner {
         }
 
         self.current += 1;
-        return true;
+        true
     }
 
     fn peek(&mut self) -> char {
@@ -365,6 +386,59 @@ enum TokenType {
     Eof,
 }
 
+impl std::string::ToString for TokenType {
+    fn to_string(&self) -> String {
+        match self {
+            // Single-character tokens.
+            TokenType::LeftParen => "".to_string(),
+            TokenType::RightParen => "".to_string(),
+            TokenType::LeftBrace => "".to_string(),
+            TokenType::RightBrace => "".to_string(),
+            TokenType::Comma => "".to_string(),
+            TokenType::Dot => "".to_string(),
+            TokenType::Minus => "-".to_string(),
+            TokenType::Plus => "".to_string(),
+            TokenType::Semicolon => "".to_string(),
+            TokenType::Slash => "".to_string(),
+            TokenType::Star => "*".to_string(),
+
+            // one or two character tokens.
+            TokenType::Bang => "".to_string(),
+            TokenType::BangEqual => "".to_string(),
+            TokenType::Equal => "".to_string(),
+            TokenType::EqualEqual => "".to_string(),
+            TokenType::Greater => "".to_string(),
+            TokenType::GreaterEqual => "".to_string(),
+            TokenType::Less => "".to_string(),
+            TokenType::LessEqual => "".to_string(),
+
+            // literals.
+            TokenType::Identifier => "".to_string(),
+            TokenType::String => "".to_string(),
+            TokenType::Number => "".to_string(),
+
+            // keywords.
+            TokenType::And => "".to_string(),
+            TokenType::Class => "".to_string(),
+            TokenType::Else => "".to_string(),
+            TokenType::False => "".to_string(),
+            TokenType::Fun => "".to_string(),
+            TokenType::For => "".to_string(),
+            TokenType::If => "".to_string(),
+            TokenType::Nil => "".to_string(),
+            TokenType::Or => "".to_string(),
+            TokenType::Print => "".to_string(),
+            TokenType::Return => "".to_string(),
+            TokenType::Super => "".to_string(),
+            TokenType::This => "".to_string(),
+            TokenType::True => "".to_string(),
+            TokenType::Var => "".to_string(),
+            TokenType::While => "".to_string(),
+            TokenType::Eof => "".to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 struct Token {
     type_: TokenType,
@@ -385,6 +459,40 @@ impl Token {
             lexeme,
             literal,
             line,
+        }
+    }
+}
+
+// Parser
+
+enum Expr {
+    Binary(Box<Expr>, Token, Box<Expr>),
+    Grouping(Box<Expr>),
+    Literal(TokenValue),
+    Unary(Token, Box<Expr>),
+}
+
+// Printer
+
+impl std::string::ToString for Expr {
+    fn to_string(&self) -> String {
+        match self {
+            Expr::Binary(left, operator, right) => format!(
+                "({} {} {})",
+                operator.type_.to_string(),
+                left.to_string(),
+                right.to_string()
+            ),
+            Expr::Grouping(inner_expr) => format!("(group {})", inner_expr.to_string()),
+            Expr::Literal(value) => match value {
+                TokenValue::String(string) => string.clone(),
+                TokenValue::Double(double) => double.to_string(),
+            },
+            Expr::Unary(operator, inner_expr) => format!(
+                "({} {})",
+                operator.type_.to_string(),
+                inner_expr.to_string()
+            ),
         }
     }
 }
