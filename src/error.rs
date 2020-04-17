@@ -1,8 +1,4 @@
-pub fn error(line: usize, message: String) {
-    report(line, String::new(), message);
-}
-
-fn report(line: usize, where_: String, message: String) {
+pub fn report(line: usize, where_: &str, message: &str) {
     println!("[line {}] Error {}: {}", line, where_, message);
 
     // hadError = true;

@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 use std::io::Read;
 
 mod error;
+mod parser;
 mod scanner;
 
 /*

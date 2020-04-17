@@ -2,6 +2,10 @@ use std::collections::HashMap;
 
 use crate::error;
 
+pub fn line_error(line: usize, message: &str) {
+    error::report(line, "", message);
+}
+
 pub struct Scanner {
     source: String,
     tokens: Vec<Token>,
@@ -122,7 +126,7 @@ impl Scanner {
                 } else if Scanner::is_alpha(c) {
                     self.identifier()
                 } else {
-                    error::error(self.line, "Unexpected character".to_string())
+                    line_error(self.line, "Unexpected character")
                 }
             }
         }
@@ -185,7 +189,7 @@ impl Scanner {
 
         // Check for unterminated string
         if self.is_at_end() {
-            error::error(self.line, "Unterminated string.".to_string());
+            line_error(self.line, "Unterminated string.");
             return;
         }
 
@@ -258,9 +262,11 @@ impl Scanner {
 pub enum TokenValue {
     String(String),
     Double(f64),
+    Bool(bool),
+    Nil,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
     // Single-character tokens.
     LeftParen,
@@ -365,11 +371,13 @@ impl std::string::ToString for TokenType {
 
 #[derive(Debug, Clone)]
 pub struct Token {
-    type_: TokenType,
-    lexeme: String,
-    literal: Option<TokenValue>,
-    line: usize,
+    pub type_: TokenType,
+    pub lexeme: String,
+    pub literal: Option<TokenValue>,
+    pub line: usize,
 }
+
+pub type TokenVec = Vec<Token>;
 
 impl Token {
     pub fn new(
