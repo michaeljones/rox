@@ -47,6 +47,10 @@ impl std::string::ToString for Expr {
     }
 }
 
+enum ParserError {
+    UnmatchedPrimary,
+}
+
 struct Parser {
     tokens: scanner::TokenVec,
     current: usize,
@@ -57,23 +61,25 @@ impl Parser {
         Parser { tokens, current: 0 }
     }
 
-    fn expression(&mut self) -> Expr {
+    fn expression(&mut self) -> Result<Expr, ParserError> {
         self.equality()
     }
 
-    fn equality(&mut self) -> Expr {
+    fn equality(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.comparison();
 
         while self.match_(&vec![TokenType::BangEqual, TokenType::EqualEqual]) {
             let operator = self.previous();
             let right = self.comparison();
-            expr = Expr::Binary(Box::new(expr), operator, Box::new(right));
+            expr = result_map2(expr, right, |l, r| {
+                Expr::Binary(Box::new(l), operator, Box::new(r))
+            });
         }
 
         expr
     }
 
-    fn comparison(&mut self) -> Expr {
+    fn comparison(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.addition();
 
         let tokens = vec![
@@ -85,61 +91,67 @@ impl Parser {
         while self.match_(&tokens) {
             let operator = self.previous();
             let right = self.addition();
-            expr = Expr::Binary(Box::new(expr), operator, Box::new(right));
+            expr = result_map2(expr, right, |l, r| {
+                Expr::Binary(Box::new(l), operator, Box::new(r))
+            });
         }
 
         expr
     }
 
-    fn addition(&mut self) -> Expr {
+    fn addition(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.multiplication();
 
         let tokens = vec![TokenType::Minus, TokenType::Plus];
         while self.match_(&tokens) {
             let operator = self.previous();
             let right = self.multiplication();
-            expr = Expr::Binary(Box::new(expr), operator, Box::new(right));
+            expr = result_map2(expr, right, |l, r| {
+                Expr::Binary(Box::new(l), operator, Box::new(r))
+            });
         }
 
         expr
     }
 
-    fn multiplication(&mut self) -> Expr {
+    fn multiplication(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.unary();
 
         let tokens = vec![TokenType::Slash, TokenType::Star];
         while self.match_(&tokens) {
             let operator = self.previous();
             let right = self.unary();
-            expr = Expr::Binary(Box::new(expr), operator, Box::new(right));
+            expr = result_map2(expr, right, |l, r| {
+                Expr::Binary(Box::new(l), operator, Box::new(r))
+            });
         }
 
         expr
     }
 
-    fn unary(&mut self) -> Expr {
+    fn unary(&mut self) -> Result<Expr, ParserError> {
         let tokens = vec![TokenType::Bang, TokenType::Minus];
         while self.match_(&tokens) {
             let operator = self.previous();
             let right = self.unary();
-            return Expr::Unary(operator, Box::new(right));
+            return right.map(|r| Expr::Unary(operator, Box::new(r)));
         }
 
         self.primary()
     }
 
-    fn primary(&mut self) -> Expr {
+    fn primary(&mut self) -> Result<Expr, ParserError> {
         if self.match_(&vec![TokenType::False]) {
-            return Expr::Literal(TokenValue::Bool(false));
+            return Ok(Expr::Literal(TokenValue::Bool(false)));
         }
         if self.match_(&vec![TokenType::True]) {
-            return Expr::Literal(TokenValue::Bool(true));
+            return Ok(Expr::Literal(TokenValue::Bool(true)));
         }
         if self.match_(&vec![TokenType::Nil]) {
-            return Expr::Literal(TokenValue::Nil);
+            return Ok(Expr::Literal(TokenValue::Nil));
         }
         if self.match_(&vec![TokenType::Number, TokenType::String]) {
-            return Expr::Literal(self.previous().literal.unwrap());
+            return Ok(Expr::Literal(self.previous().literal.unwrap()));
         }
         if self.match_(&vec![TokenType::LeftParen]) {
             let expr = self.expression();
@@ -147,11 +159,10 @@ impl Parser {
                 &TokenType::RightParen,
                 "Expect ')' after expression".to_string(),
             );
-            return Expr::Grouping(Box::new(expr));
+            return expr.map(|expr| Expr::Grouping(Box::new(expr)));
         }
 
-        // TODO: Figure out what to return here...
-        return Expr::Literal(TokenValue::Nil);
+        Err(ParserError::UnmatchedPrimary)
     }
 
     fn consume(&mut self, type_: &TokenType, message: String) -> () {
@@ -206,7 +217,7 @@ impl Parser {
     fn synchronize(&mut self) {
         self.advance();
 
-        while !self.is_at_end {
+        while !self.is_at_end() {
             if self.previous().type_ == TokenType::Semicolon {
                 return;
             }
@@ -226,4 +237,12 @@ impl Parser {
             self.advance();
         }
     }
+}
+
+fn result_map2<T, E, F: FnOnce(T, T) -> T>(
+    a: Result<T, E>,
+    b: Result<T, E>,
+    op: F,
+) -> Result<T, E> {
+    a.and_then(|a| b.map(|b| op(a, b)))
 }
