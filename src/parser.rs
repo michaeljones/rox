@@ -13,7 +13,7 @@ pub fn token_error(token: &Token, message: &String) {
     }
 }
 
-enum Expr {
+pub enum Expr {
     Binary(Box<Expr>, Token, Box<Expr>),
     Grouping(Box<Expr>),
     Literal(TokenValue),
@@ -47,18 +47,23 @@ impl std::string::ToString for Expr {
     }
 }
 
-enum ParserError {
+#[derive(Debug)]
+pub enum ParserError {
     UnmatchedPrimary,
 }
 
-struct Parser {
+pub struct Parser {
     tokens: scanner::TokenVec,
     current: usize,
 }
 
 impl Parser {
-    fn new(tokens: scanner::TokenVec) -> Parser {
+    pub fn new(tokens: scanner::TokenVec) -> Parser {
         Parser { tokens, current: 0 }
+    }
+
+    pub fn parse(&mut self) -> Result<Expr, ParserError> {
+        self.expression()
     }
 
     fn expression(&mut self) -> Result<Expr, ParserError> {

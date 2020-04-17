@@ -64,8 +64,10 @@ fn run_prompt() {
 fn run(source: String) {
     let mut scanner = scanner::Scanner::new(source);
     let tokens = scanner.scan_tokens();
+    let mut parser = parser::Parser::new(tokens);
 
-    for token in &tokens {
-        println!("{:?}", token);
+    match parser.parse() {
+        Ok(expr) => println!("{}", expr.to_string()),
+        Err(err) => println!("{:?}", err),
     }
 }
