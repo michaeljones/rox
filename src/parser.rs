@@ -33,7 +33,7 @@ impl std::string::ToString for Expr {
             ),
             Expr::Grouping(inner_expr) => format!("(group {})", inner_expr.to_string()),
             Expr::Literal(value) => match value {
-                TokenValue::String(string) => string.clone(),
+                TokenValue::String(string) => format!("\"{}\"", string.clone()),
                 TokenValue::Double(double) => double.to_string(),
                 TokenValue::Bool(boolean) => boolean.to_string(),
                 TokenValue::Nil => "nil".to_string(),

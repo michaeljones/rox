@@ -201,7 +201,7 @@ impl Scanner {
             .source
             .chars()
             .skip(self.start + 1)
-            .take(len - 1)
+            .take(len - 2)
             .collect();
         self.add_token_value(TokenType::String, Some(TokenValue::String(value)));
     }
