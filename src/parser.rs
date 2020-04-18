@@ -67,7 +67,21 @@ impl Parser {
     }
 
     fn expression(&mut self) -> Result<Expr, ParserError> {
-        self.equality()
+        self.comma()
+    }
+
+    fn comma(&mut self) -> Result<Expr, ParserError> {
+        let mut expr = self.equality();
+
+        while self.match_(&vec![TokenType::Comma]) {
+            let operator = self.previous();
+            let right = self.equality();
+            expr = result_map2(expr, right, |l, r| {
+                Expr::Binary(Box::new(l), operator, Box::new(r))
+            });
+        }
+
+        expr
     }
 
     fn equality(&mut self) -> Result<Expr, ParserError> {
