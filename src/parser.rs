@@ -2,7 +2,7 @@ use crate::error;
 use crate::scanner;
 use crate::scanner::Token;
 use crate::scanner::TokenType;
-use crate::scanner::TokenValue;
+use crate::value::Value;
 
 pub fn token_error(token: &Token, message: &String) {
     if token.type_ == TokenType::Eof {
@@ -16,7 +16,7 @@ pub fn token_error(token: &Token, message: &String) {
 pub enum Expr {
     Binary(Box<Expr>, Token, Box<Expr>),
     Grouping(Box<Expr>),
-    Literal(TokenValue),
+    Literal(Value),
     Unary(Token, Box<Expr>),
 }
 
@@ -33,10 +33,10 @@ impl std::string::ToString for Expr {
             ),
             Expr::Grouping(inner_expr) => format!("(group {})", inner_expr.to_string()),
             Expr::Literal(value) => match value {
-                TokenValue::String(string) => format!("\"{}\"", string.clone()),
-                TokenValue::Double(double) => double.to_string(),
-                TokenValue::Bool(boolean) => boolean.to_string(),
-                TokenValue::Nil => "nil".to_string(),
+                Value::String(string) => format!("\"{}\"", string.clone()),
+                Value::Double(double) => double.to_string(),
+                Value::Bool(boolean) => boolean.to_string(),
+                Value::Nil => "nil".to_string(),
             },
             Expr::Unary(operator, inner_expr) => format!(
                 "({} {})",
@@ -161,13 +161,13 @@ impl Parser {
 
     fn primary(&mut self) -> Result<Expr, ParserError> {
         if self.match_(&vec![TokenType::False]) {
-            return Ok(Expr::Literal(TokenValue::Bool(false)));
+            return Ok(Expr::Literal(Value::Bool(false)));
         }
         if self.match_(&vec![TokenType::True]) {
-            return Ok(Expr::Literal(TokenValue::Bool(true)));
+            return Ok(Expr::Literal(Value::Bool(true)));
         }
         if self.match_(&vec![TokenType::Nil]) {
-            return Ok(Expr::Literal(TokenValue::Nil));
+            return Ok(Expr::Literal(Value::Nil));
         }
         if self.match_(&vec![TokenType::Number, TokenType::String]) {
             return Ok(Expr::Literal(self.previous().literal.unwrap()));

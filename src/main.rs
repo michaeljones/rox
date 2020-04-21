@@ -2,8 +2,10 @@ use std::cmp::Ordering;
 use std::io::Read;
 
 mod error;
+mod interpreter;
 mod parser;
 mod scanner;
+mod value;
 
 /*
 let ast = Expr::Binary(
@@ -67,7 +69,9 @@ fn run(source: String) {
     let mut parser = parser::Parser::new(tokens);
 
     match parser.parse() {
-        Ok(expr) => println!("{}", expr.to_string()),
+        Ok(expr) => {
+            interpreter::interpret(&expr);
+        } //println!("{}", expr.to_string()),
         Err(err) => println!("{:?}", err),
     }
 }

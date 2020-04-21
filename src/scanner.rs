@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::error;
+use crate::value::Value;
 
 pub fn line_error(line: usize, message: &str) {
     error::report(line, "", message);
@@ -173,7 +174,7 @@ impl Scanner {
         self.add_token_value(type_, None);
     }
 
-    fn add_token_value(&mut self, type_: TokenType, value: Option<TokenValue>) {
+    fn add_token_value(&mut self, type_: TokenType, value: Option<Value>) {
         let len = self.current - self.start;
         let text = self.source.chars().skip(self.start).take(len).collect();
         self.tokens.push(Token::new(type_, text, value, self.line));
@@ -203,7 +204,7 @@ impl Scanner {
             .skip(self.start + 1)
             .take(len - 2)
             .collect();
-        self.add_token_value(TokenType::String, Some(TokenValue::String(value)));
+        self.add_token_value(TokenType::String, Some(Value::String(value)));
     }
 
     fn number(&mut self) {
@@ -223,7 +224,7 @@ impl Scanner {
         let text: String = self.source.chars().skip(self.start).take(len).collect();
         self.add_token_value(
             TokenType::Number,
-            Some(TokenValue::Double(text.parse::<f64>().unwrap())),
+            Some(Value::Double(text.parse::<f64>().unwrap())),
         )
     }
 
@@ -256,14 +257,6 @@ impl Scanner {
     fn is_alpha_numeric(c: char) -> bool {
         Scanner::is_alpha(c) || Scanner::is_digit(c)
     }
-}
-
-#[derive(Debug, Clone)]
-pub enum TokenValue {
-    String(String),
-    Double(f64),
-    Bool(bool),
-    Nil,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -369,23 +362,18 @@ impl std::string::ToString for TokenType {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Token {
     pub type_: TokenType,
     pub lexeme: String,
-    pub literal: Option<TokenValue>,
+    pub literal: Option<Value>,
     pub line: usize,
 }
 
 pub type TokenVec = Vec<Token>;
 
 impl Token {
-    pub fn new(
-        type_: TokenType,
-        lexeme: String,
-        literal: Option<TokenValue>,
-        line: usize,
-    ) -> Token {
+    pub fn new(type_: TokenType, lexeme: String, literal: Option<Value>, line: usize) -> Token {
         Token {
             type_,
             lexeme,
