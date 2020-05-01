@@ -13,6 +13,11 @@ pub fn token_error(token: &Token, message: &String) {
     }
 }
 
+pub enum Stmt {
+    Expression(Expr),
+    Print(Expr),
+}
+
 pub enum Expr {
     Binary(Box<Expr>, Token, Box<Expr>),
     Grouping(Box<Expr>),
@@ -62,8 +67,39 @@ impl Parser {
         Parser { tokens, current: 0 }
     }
 
-    pub fn parse(&mut self) -> Result<Expr, ParserError> {
-        self.expression()
+    pub fn parse(&mut self) -> Result<Vec<Stmt>, ParserError> {
+        let mut statements = Vec::new();
+
+        while !self.is_at_end() {
+            match self.statement() {
+                Ok(statement) => statements.push(statement),
+                Err(err) => return Err(err),
+            }
+        }
+
+        Ok(statements)
+    }
+
+    fn statement(&mut self) -> Result<Stmt, ParserError> {
+        if self.match_(&vec![TokenType::Print]) {
+            self.print_statement()
+        } else {
+            self.expression_statement()
+        }
+    }
+
+    fn print_statement(&mut self) -> Result<Stmt, ParserError> {
+        let value = self.expression();
+        self.consume(&TokenType::Semicolon, "Expect ';' after value".to_string());
+
+        value.map(Stmt::Print)
+    }
+
+    fn expression_statement(&mut self) -> Result<Stmt, ParserError> {
+        let value = self.expression();
+        self.consume(&TokenType::Semicolon, "Expect ';' after value".to_string());
+
+        value.map(Stmt::Expression)
     }
 
     fn expression(&mut self) -> Result<Expr, ParserError> {

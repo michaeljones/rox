@@ -1,4 +1,5 @@
 use crate::parser::Expr;
+use crate::parser::Stmt;
 use crate::scanner::Token;
 use crate::scanner::TokenType;
 use crate::value::Value;
@@ -9,25 +10,42 @@ pub enum EvaluationError {
     InvalidBinaryOperand(Token, String),
 }
 
-pub fn interpret(expr: &Expr) {
-    let result = evaluate(expr);
-    match result {
-        Ok(value) => println!("{}", value.to_string()),
-        Err(err) => println!("{:?}", err),
+pub fn interpret(statements: &Vec<Stmt>) {
+    for statement in statements {
+        evaluate_statement(statement);
     }
 }
 
-fn evaluate(expr: &Expr) -> Result<Value, EvaluationError> {
+fn evaluate_statement(statement: &Stmt) {
+    match statement {
+        Stmt::Print(expr) => {
+            let result = evaluate_expression(expr);
+            match result {
+                Ok(value) => println!("{}", value.to_string()),
+                Err(err) => println!("{:?}", err),
+            }
+        }
+        Stmt::Expression(expr) => {
+            let result = evaluate_expression(expr);
+            match result {
+                Ok(_) => {}
+                Err(err) => println!("{:?}", err),
+            }
+        }
+    }
+}
+
+fn evaluate_expression(expr: &Expr) -> Result<Value, EvaluationError> {
     match expr {
         Expr::Literal(value) => Ok(value.clone()),
-        Expr::Grouping(expr) => evaluate(expr),
+        Expr::Grouping(expr) => evaluate_expression(expr),
         Expr::Unary(operator, expr) => evaluate_unary(operator, expr),
         Expr::Binary(left, operator, right) => evaluate_binary(left, operator, right),
     }
 }
 
 fn evaluate_unary(operator: &Token, expr: &Expr) -> Result<Value, EvaluationError> {
-    let value = evaluate(expr);
+    let value = evaluate_expression(expr);
 
     match (&operator.type_, value) {
         (&TokenType::Minus, Ok(Value::Double(double))) => Ok(Value::Double(-double)),
@@ -45,8 +63,8 @@ fn evaluate_unary(operator: &Token, expr: &Expr) -> Result<Value, EvaluationErro
 }
 
 fn evaluate_binary(left: &Expr, operator: &Token, right: &Expr) -> Result<Value, EvaluationError> {
-    let left = evaluate(left);
-    let right = evaluate(right);
+    let left = evaluate_expression(left);
+    let right = evaluate_expression(right);
 
     match (left, &operator.type_, right) {
         (Ok(Value::Double(left)), &TokenType::Minus, Ok(Value::Double(right))) => {

@@ -31,7 +31,6 @@ fn main() {
             std::process::exit(64);
         }
         Ordering::Equal => {
-            print!("{:?}", args);
             run_file(&args[1]);
         }
         Ordering::Less => {
@@ -66,12 +65,13 @@ fn run_prompt() {
 fn run(source: String) {
     let mut scanner = scanner::Scanner::new(source);
     let tokens = scanner.scan_tokens();
+    // println!("tokens: {:?}", tokens);
     let mut parser = parser::Parser::new(tokens);
 
     match parser.parse() {
-        Ok(expr) => {
-            interpreter::interpret(&expr);
-        } //println!("{}", expr.to_string()),
+        Ok(statements) => {
+            interpreter::interpret(&statements);
+        }
         Err(err) => println!("{:?}", err),
     }
 }
