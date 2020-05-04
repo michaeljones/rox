@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 use std::io::Read;
 
+mod environment;
 mod error;
 mod interpreter;
 mod parser;
@@ -70,7 +71,9 @@ fn run(source: String) {
 
     match parser.parse() {
         Ok(statements) => {
-            interpreter::interpret(&statements);
+            let mut environment = environment::Environment::new();
+            let mut interpreter = interpreter::Interpreter::new();
+            interpreter.interpret(&statements, &mut environment);
         }
         Err(err) => println!("{:?}", err),
     }
