@@ -114,12 +114,12 @@ impl Parser {
             initializer = self.expression().map(Some);
         }
 
-        self.consume(
+        let consume_result = self.consume(
             &TokenType::Semicolon,
             "Expect ';' after variable declaration".to_string(),
         );
 
-        result_map2(name, initializer, |n, i| Stmt::Var(n, i))
+        result_map3(name, initializer, consume_result, |n, i, _| Stmt::Var(n, i))
     }
 
     fn statement(&mut self) -> Result<Stmt, ParserError> {
@@ -142,23 +142,23 @@ impl Parser {
             }
         }
 
-        let result = self.consume(&TokenType::Semicolon, "Expect '}' after block".to_string());
+        let result = self.consume(&TokenType::RightBrace, "Expect '}' after block".to_string());
 
         result.map(|_| statements)
     }
 
     fn print_statement(&mut self) -> Result<Stmt, ParserError> {
         let value = self.expression();
-        self.consume(&TokenType::Semicolon, "Expect ';' after value".to_string());
+        let result = self.consume(&TokenType::Semicolon, "Expect ';' after value".to_string());
 
-        value.map(Stmt::Print)
+        result_map2(value, result, |value, _| Stmt::Print(value))
     }
 
     fn expression_statement(&mut self) -> Result<Stmt, ParserError> {
         let value = self.expression();
-        self.consume(&TokenType::Semicolon, "Expect ';' after value".to_string());
+        let result = self.consume(&TokenType::Semicolon, "Expect ';' after value".to_string());
 
-        value.map(Stmt::Expression)
+        result_map2(value, result, |value, _| Stmt::Expression(value))
     }
 
     fn expression(&mut self) -> Result<Expr, ParserError> {
@@ -277,11 +277,11 @@ impl Parser {
         }
         if self.match_(&vec![TokenType::LeftParen]) {
             let expr = self.expression();
-            self.consume(
+            let result = self.consume(
                 &TokenType::RightParen,
                 "Expect ')' after expression".to_string(),
             );
-            return expr.map(|expr| Expr::Grouping(Box::new(expr)));
+            return result_map2(expr, result, |expr, _| Expr::Grouping(Box::new(expr)));
         }
 
         Err(ParserError::UnmatchedPrimary)
@@ -368,3 +368,24 @@ fn result_map2<T, S, O, E, F: FnOnce(T, S) -> O>(
 ) -> Result<O, E> {
     a.and_then(|a| b.map(|b| op(a, b)))
 }
+
+fn result_map3<T, U, V, O, E, F: FnOnce(T, U, V) -> O>(
+    a: Result<T, E>,
+    b: Result<U, E>,
+    c: Result<V, E>,
+    op: F,
+) -> Result<O, E> {
+    a.and_then(|a| b.and_then(|b| c.map(|c| op(a, b, c))))
+}
+
+/*
+fn result_map4<T, U, V, W, O, E, F: FnOnce(T, U, V, W) -> O>(
+    a: Result<T, E>,
+    b: Result<U, E>,
+    c: Result<V, E>,
+    d: Result<W, E>,
+    op: F,
+) -> Result<O, E> {
+    a.and_then(|a| b.and_then(|b| c.and_then(|c| d.map(|d| op(a, b, c, d)))))
+}
+*/
