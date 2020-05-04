@@ -20,35 +20,27 @@ impl Interpreter {
         Interpreter {}
     }
 
-    pub fn interpret<'a, 'b>(
-        &mut self,
-        statements: &Vec<Stmt>,
-        environment: &'b mut Environment<'a, 'b>,
-    ) {
+    pub fn interpret(&mut self, statements: &Vec<Stmt>) {
+        let mut environments = vec![Environment::new()];
         for statement in statements {
-            self.execute_statement(statement, environment);
+            self.execute_statement(statement, &mut environments);
         }
     }
 
-    fn execute_statement<'a, 'b>(
-        &mut self,
-        statement: &Stmt,
-        environment: &'b mut Environment<'a, 'b>,
-    ) {
+    fn execute_statement(&mut self, statement: &Stmt, environments: &mut Vec<Environment>) {
         match statement {
             Stmt::Block(statements) => {
-                let mut block_environment = Environment::enclosing(environment);
-                self.execute_block(statements, &mut block_environment);
+                self.execute_block(statements, environments);
             }
             Stmt::Print(expr) => {
-                let result = self.evaluate_expression(expr, environment);
+                let result = self.evaluate_expression(expr, environments);
                 match result {
                     Ok(value) => println!("{}", value.to_string()),
                     Err(err) => println!("{:?}", err),
                 }
             }
             Stmt::Expression(expr) => {
-                let result = self.evaluate_expression(expr, environment);
+                let result = self.evaluate_expression(expr, environments);
                 match result {
                     Ok(_) => {}
                     Err(err) => println!("{:?}", err),
@@ -57,46 +49,43 @@ impl Interpreter {
             Stmt::Var(name, initialiser) => {
                 let value = initialiser
                     .as_ref()
-                    .map(|expr| self.evaluate_expression(expr, environment))
+                    .map(|expr| self.evaluate_expression(expr, environments))
                     .transpose();
                 match value {
-                    Ok(value) => environment.define(name.lexeme.clone(), value),
+                    Ok(value) => Interpreter::define(environments, name.lexeme.clone(), value),
                     Err(err) => println!("{:?}", err),
                 }
             }
         }
     }
 
-    fn execute_block<'a, 'b>(
-        &mut self,
-        statements: &Vec<Stmt>,
-        environment: &'b mut Environment<'a, 'b>,
-    ) {
+    fn execute_block(&mut self, statements: &Vec<Stmt>, environments: &mut Vec<Environment>) {
+        environments.push(Environment::new());
         for statement in statements {
-            self.execute_statement(statement, environment);
+            self.execute_statement(statement, environments);
         }
+        environments.pop();
     }
 
     fn evaluate_expression(
         &mut self,
         expr: &Expr,
-        environment: &mut Environment,
+        environments: &mut Vec<Environment>,
     ) -> Result<Value, EvaluationError> {
         match expr {
             Expr::Literal(value) => Ok(value.clone()),
-            Expr::Grouping(expr) => self.evaluate_expression(expr, environment),
-            Expr::Unary(operator, expr) => self.evaluate_unary(operator, expr, environment),
+            Expr::Grouping(expr) => self.evaluate_expression(expr, environments),
+            Expr::Unary(operator, expr) => self.evaluate_unary(operator, expr, environments),
             Expr::Binary(left, operator, right) => {
-                self.evaluate_binary(left, operator, right, environment)
+                self.evaluate_binary(left, operator, right, environments)
             }
-            Expr::Variable(name_token) => environment
-                .get(name_token)
+            Expr::Variable(name_token) => Interpreter::get(environments, name_token)
                 .map(|value_option| value_option.unwrap_or(Value::Nil))
                 .map_err(|_| EvaluationError::VariableDoesNotExist),
             Expr::Assign(name_token, expr) => {
-                let result = self.evaluate_expression(expr, environment);
+                let result = self.evaluate_expression(expr, environments);
                 result.and_then(|value| {
-                    if environment.assign(name_token, value.clone()) {
+                    if Interpreter::assign(environments, name_token, &value) {
                         Ok(value)
                     } else {
                         Err(EvaluationError::InvalidAssignment)
@@ -110,9 +99,9 @@ impl Interpreter {
         &mut self,
         operator: &Token,
         expr: &Expr,
-        environment: &mut Environment,
+        environments: &mut Vec<Environment>,
     ) -> Result<Value, EvaluationError> {
-        let value = self.evaluate_expression(expr, environment);
+        let value = self.evaluate_expression(expr, environments);
 
         match (&operator.type_, value) {
             (&TokenType::Minus, Ok(Value::Double(double))) => Ok(Value::Double(-double)),
@@ -134,10 +123,10 @@ impl Interpreter {
         left: &Expr,
         operator: &Token,
         right: &Expr,
-        environment: &mut Environment,
+        environments: &mut Vec<Environment>,
     ) -> Result<Value, EvaluationError> {
-        let left = self.evaluate_expression(left, environment);
-        let right = self.evaluate_expression(right, environment);
+        let left = self.evaluate_expression(left, environments);
+        let right = self.evaluate_expression(right, environments);
 
         match (left, &operator.type_, right) {
             (Ok(Value::Double(left)), &TokenType::Minus, Ok(Value::Double(right))) => {
@@ -210,6 +199,37 @@ impl Interpreter {
                 "Unrecognised binary operation".to_string(),
             )),
         }
+    }
+
+    fn define(environments: &mut Vec<Environment>, name: String, value: Option<Value>) {
+        if let Some(last) = environments.last_mut() {
+            last.define(name, value);
+        }
+    }
+
+    fn assign(environments: &mut Vec<Environment>, name: &Token, value: &Value) -> bool {
+        for environment in environments.iter_mut().rev() {
+            if environment.assign(name, value) {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn get(
+        environments: &mut Vec<Environment>,
+        name: &Token,
+    ) -> Result<Option<Value>, EvaluationError> {
+        let mut result = Err(EvaluationError::VariableDoesNotExist);
+        for environment in environments.iter().rev() {
+            result = environment
+                .get(name)
+                .map_err(|_| EvaluationError::VariableDoesNotExist);
+            if let Ok(_) = result {
+                return result;
+            }
+        }
+        result
     }
 }
 

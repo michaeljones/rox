@@ -71,9 +71,8 @@ fn run(source: String) {
 
     match parser.parse() {
         Ok(statements) => {
-            let mut environment = environment::Environment::new();
             let mut interpreter = interpreter::Interpreter::new();
-            interpreter.interpret(&statements, &mut environment);
+            interpreter.interpret(&statements);
         }
         Err(err) => println!("{:?}", err),
     }
