@@ -20,13 +20,21 @@ impl Interpreter {
         Interpreter {}
     }
 
-    pub fn interpret<'a>(&mut self, statements: &Vec<Stmt>, environment: &'a mut Environment<'a>) {
+    pub fn interpret<'a, 'b>(
+        &mut self,
+        statements: &Vec<Stmt>,
+        environment: &'b mut Environment<'a, 'b>,
+    ) {
         for statement in statements {
             self.execute_statement(statement, environment);
         }
     }
 
-    fn execute_statement<'a>(&mut self, statement: &Stmt, environment: &'a mut Environment<'a>) {
+    fn execute_statement<'a, 'b>(
+        &mut self,
+        statement: &Stmt,
+        environment: &'b mut Environment<'a, 'b>,
+    ) {
         match statement {
             Stmt::Block(statements) => {
                 let mut block_environment = Environment::enclosing(environment);
@@ -59,7 +67,11 @@ impl Interpreter {
         }
     }
 
-    fn execute_block<'a>(&mut self, statements: &Vec<Stmt>, environment: &'a mut Environment<'a>) {
+    fn execute_block<'a, 'b>(
+        &mut self,
+        statements: &Vec<Stmt>,
+        environment: &'b mut Environment<'a, 'b>,
+    ) {
         for statement in statements {
             self.execute_statement(statement, environment);
         }
